@@ -1,0 +1,472 @@
+diff --git a/dist/shared/ofetch.00501375.mjs b/dist/shared/ofetch.00501375.mjs
+index 636c840d2fd9ca0843cc035e968d30eba7834ac2..a379ec35c1a972b525d4ff48924950e0efe646f4 100644
+--- a/dist/shared/ofetch.00501375.mjs
++++ b/dist/shared/ofetch.00501375.mjs
+@@ -151,7 +151,13 @@ function createFetch(globalOptions = {}) {
+       }
+       const responseCode = context.response && context.response.status || 500;
+       if (retries > 0 && (Array.isArray(context.options.retryStatusCodes) ? context.options.retryStatusCodes.includes(responseCode) : retryStatusCodes.has(responseCode))) {
+-        const retryDelay = context.options.retryDelay || 0;
++        let retryDelay;
++        if (typeof context.options.retryDelay === 'function') {
++          retryDelay = context.options.retryDelay({ attempt: retries, response: context.response })
++        } else {
++          retryDelay = context.options.retryDelay || 0
++        }
++
+         if (retryDelay > 0) {
+           await new Promise((resolve) => setTimeout(resolve, retryDelay));
+         }
+diff --git a/dist/shared/ofetch.441891d5.d.cts b/dist/shared/ofetch.441891d5.d.cts
+index 682187175f114a1e44f10c721607610fd48d8356..e36b77ebb77a27c831f8fc8c902aee502bf58baa 100644
+--- a/dist/shared/ofetch.441891d5.d.cts
++++ b/dist/shared/ofetch.441891d5.d.cts
+@@ -4,87 +4,87 @@ type RequestInit = globalThis.RequestInit;
+ type Response = globalThis.Response;
+ 
+ interface ResponseMap {
+-    blob: Blob;
+-    text: string;
+-    arrayBuffer: ArrayBuffer;
+-    stream: ReadableStream<Uint8Array>;
++  blob: Blob;
++  text: string;
++  arrayBuffer: ArrayBuffer;
++  stream: ReadableStream<Uint8Array>;
+ }
+ type ResponseType = keyof ResponseMap | "json";
+ type MappedType<R extends ResponseType, JsonType = any> = R extends keyof ResponseMap ? ResponseMap[R] : JsonType;
+ 
+ interface CreateFetchOptions {
+-    defaults?: FetchOptions;
+-    fetch?: Fetch;
+-    Headers?: typeof Headers;
+-    AbortController?: typeof AbortController;
++  defaults?: FetchOptions;
++  fetch?: Fetch;
++  Headers?: typeof Headers;
++  AbortController?: typeof AbortController;
+ }
+ type FetchRequest = RequestInfo;
+ interface FetchResponse<T> extends Response {
+-    _data?: T;
++  _data?: T;
+ }
+ interface SearchParameters {
+-    [key: string]: any;
++  [key: string]: any;
+ }
+ interface FetchContext<T = any, R extends ResponseType = ResponseType> {
+-    request: FetchRequest;
+-    options: FetchOptions<R>;
+-    response?: FetchResponse<T>;
+-    error?: Error;
++  request: FetchRequest;
++  options: FetchOptions<R>;
++  response?: FetchResponse<T>;
++  error?: Error;
+ }
+ interface FetchOptions<R extends ResponseType = ResponseType> extends Omit<RequestInit, "body"> {
+-    baseURL?: string;
+-    body?: RequestInit["body"] | Record<string, any>;
+-    ignoreResponseError?: boolean;
+-    params?: SearchParameters;
+-    query?: SearchParameters;
+-    parseResponse?: (responseText: string) => any;
+-    responseType?: R;
+-    /**
+-     * @experimental Set to "half" to enable duplex streaming.
+-     * Will be automatically set to "half" when using a ReadableStream as body.
+-     * https://fetch.spec.whatwg.org/#enumdef-requestduplex
+-     */
+-    duplex?: "half" | undefined;
+-    /** timeout in milliseconds */
+-    timeout?: number;
+-    retry?: number | false;
+-    /** Delay between retries in milliseconds. */
+-    retryDelay?: number;
+-    /** Default is [408, 409, 425, 429, 500, 502, 503, 504] */
+-    retryStatusCodes?: number[];
+-    onRequest?(context: FetchContext): Promise<void> | void;
+-    onRequestError?(context: FetchContext & {
+-        error: Error;
+-    }): Promise<void> | void;
+-    onResponse?(context: FetchContext & {
+-        response: FetchResponse<R>;
+-    }): Promise<void> | void;
+-    onResponseError?(context: FetchContext & {
+-        response: FetchResponse<R>;
+-    }): Promise<void> | void;
++  baseURL?: string;
++  body?: RequestInit["body"] | Record<string, any>;
++  ignoreResponseError?: boolean;
++  params?: SearchParameters;
++  query?: SearchParameters;
++  parseResponse?: (responseText: string) => any;
++  responseType?: R;
++  /**
++   * @experimental Set to "half" to enable duplex streaming.
++   * Will be automatically set to "half" when using a ReadableStream as body.
++   * https://fetch.spec.whatwg.org/#enumdef-requestduplex
++   */
++  duplex?: "half" | undefined;
++  /** timeout in milliseconds */
++  timeout?: number;
++  retry?: number | false;
++  /** Delay between retries in milliseconds. */
++  retryDelay?: number | (({ attempt: number, response: Response }) => number);
++  /** Default is [408, 409, 425, 429, 500, 502, 503, 504] */
++  retryStatusCodes?: number[];
++  onRequest?(context: FetchContext): Promise<void> | void;
++  onRequestError?(context: FetchContext & {
++    error: Error;
++  }): Promise<void> | void;
++  onResponse?(context: FetchContext & {
++    response: FetchResponse<R>;
++  }): Promise<void> | void;
++  onResponseError?(context: FetchContext & {
++    response: FetchResponse<R>;
++  }): Promise<void> | void;
+ }
+ interface $Fetch {
+-    <T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<MappedType<R, T>>;
+-    raw<T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<FetchResponse<MappedType<R, T>>>;
+-    native: Fetch;
+-    create(defaults: FetchOptions): $Fetch;
++  <T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<MappedType<R, T>>;
++  raw<T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<FetchResponse<MappedType<R, T>>>;
++  native: Fetch;
++  create(defaults: FetchOptions): $Fetch;
+ }
+ declare function createFetch(globalOptions?: CreateFetchOptions): $Fetch;
+ 
+ interface IFetchError<T = any> extends Error {
+-    request?: FetchRequest;
+-    options?: FetchOptions;
+-    response?: FetchResponse<T>;
+-    data?: T;
+-    status?: number;
+-    statusText?: string;
+-    statusCode?: number;
+-    statusMessage?: string;
++  request?: FetchRequest;
++  options?: FetchOptions;
++  response?: FetchResponse<T>;
++  data?: T;
++  status?: number;
++  statusText?: string;
++  statusCode?: number;
++  statusMessage?: string;
+ }
+ declare class FetchError<T = any> extends Error implements IFetchError<T> {
+-    constructor(message: string, opts?: {
+-        cause: unknown;
+-    });
++  constructor(message: string, opts?: {
++    cause: unknown;
++  });
+ }
+ interface FetchError<T = any> extends IFetchError<T> {
+ }
+diff --git a/dist/shared/ofetch.441891d5.d.mts b/dist/shared/ofetch.441891d5.d.mts
+index 682187175f114a1e44f10c721607610fd48d8356..e36b77ebb77a27c831f8fc8c902aee502bf58baa 100644
+--- a/dist/shared/ofetch.441891d5.d.mts
++++ b/dist/shared/ofetch.441891d5.d.mts
+@@ -4,87 +4,87 @@ type RequestInit = globalThis.RequestInit;
+ type Response = globalThis.Response;
+ 
+ interface ResponseMap {
+-    blob: Blob;
+-    text: string;
+-    arrayBuffer: ArrayBuffer;
+-    stream: ReadableStream<Uint8Array>;
++  blob: Blob;
++  text: string;
++  arrayBuffer: ArrayBuffer;
++  stream: ReadableStream<Uint8Array>;
+ }
+ type ResponseType = keyof ResponseMap | "json";
+ type MappedType<R extends ResponseType, JsonType = any> = R extends keyof ResponseMap ? ResponseMap[R] : JsonType;
+ 
+ interface CreateFetchOptions {
+-    defaults?: FetchOptions;
+-    fetch?: Fetch;
+-    Headers?: typeof Headers;
+-    AbortController?: typeof AbortController;
++  defaults?: FetchOptions;
++  fetch?: Fetch;
++  Headers?: typeof Headers;
++  AbortController?: typeof AbortController;
+ }
+ type FetchRequest = RequestInfo;
+ interface FetchResponse<T> extends Response {
+-    _data?: T;
++  _data?: T;
+ }
+ interface SearchParameters {
+-    [key: string]: any;
++  [key: string]: any;
+ }
+ interface FetchContext<T = any, R extends ResponseType = ResponseType> {
+-    request: FetchRequest;
+-    options: FetchOptions<R>;
+-    response?: FetchResponse<T>;
+-    error?: Error;
++  request: FetchRequest;
++  options: FetchOptions<R>;
++  response?: FetchResponse<T>;
++  error?: Error;
+ }
+ interface FetchOptions<R extends ResponseType = ResponseType> extends Omit<RequestInit, "body"> {
+-    baseURL?: string;
+-    body?: RequestInit["body"] | Record<string, any>;
+-    ignoreResponseError?: boolean;
+-    params?: SearchParameters;
+-    query?: SearchParameters;
+-    parseResponse?: (responseText: string) => any;
+-    responseType?: R;
+-    /**
+-     * @experimental Set to "half" to enable duplex streaming.
+-     * Will be automatically set to "half" when using a ReadableStream as body.
+-     * https://fetch.spec.whatwg.org/#enumdef-requestduplex
+-     */
+-    duplex?: "half" | undefined;
+-    /** timeout in milliseconds */
+-    timeout?: number;
+-    retry?: number | false;
+-    /** Delay between retries in milliseconds. */
+-    retryDelay?: number;
+-    /** Default is [408, 409, 425, 429, 500, 502, 503, 504] */
+-    retryStatusCodes?: number[];
+-    onRequest?(context: FetchContext): Promise<void> | void;
+-    onRequestError?(context: FetchContext & {
+-        error: Error;
+-    }): Promise<void> | void;
+-    onResponse?(context: FetchContext & {
+-        response: FetchResponse<R>;
+-    }): Promise<void> | void;
+-    onResponseError?(context: FetchContext & {
+-        response: FetchResponse<R>;
+-    }): Promise<void> | void;
++  baseURL?: string;
++  body?: RequestInit["body"] | Record<string, any>;
++  ignoreResponseError?: boolean;
++  params?: SearchParameters;
++  query?: SearchParameters;
++  parseResponse?: (responseText: string) => any;
++  responseType?: R;
++  /**
++   * @experimental Set to "half" to enable duplex streaming.
++   * Will be automatically set to "half" when using a ReadableStream as body.
++   * https://fetch.spec.whatwg.org/#enumdef-requestduplex
++   */
++  duplex?: "half" | undefined;
++  /** timeout in milliseconds */
++  timeout?: number;
++  retry?: number | false;
++  /** Delay between retries in milliseconds. */
++  retryDelay?: number | (({ attempt: number, response: Response }) => number);
++  /** Default is [408, 409, 425, 429, 500, 502, 503, 504] */
++  retryStatusCodes?: number[];
++  onRequest?(context: FetchContext): Promise<void> | void;
++  onRequestError?(context: FetchContext & {
++    error: Error;
++  }): Promise<void> | void;
++  onResponse?(context: FetchContext & {
++    response: FetchResponse<R>;
++  }): Promise<void> | void;
++  onResponseError?(context: FetchContext & {
++    response: FetchResponse<R>;
++  }): Promise<void> | void;
+ }
+ interface $Fetch {
+-    <T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<MappedType<R, T>>;
+-    raw<T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<FetchResponse<MappedType<R, T>>>;
+-    native: Fetch;
+-    create(defaults: FetchOptions): $Fetch;
++  <T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<MappedType<R, T>>;
++  raw<T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<FetchResponse<MappedType<R, T>>>;
++  native: Fetch;
++  create(defaults: FetchOptions): $Fetch;
+ }
+ declare function createFetch(globalOptions?: CreateFetchOptions): $Fetch;
+ 
+ interface IFetchError<T = any> extends Error {
+-    request?: FetchRequest;
+-    options?: FetchOptions;
+-    response?: FetchResponse<T>;
+-    data?: T;
+-    status?: number;
+-    statusText?: string;
+-    statusCode?: number;
+-    statusMessage?: string;
++  request?: FetchRequest;
++  options?: FetchOptions;
++  response?: FetchResponse<T>;
++  data?: T;
++  status?: number;
++  statusText?: string;
++  statusCode?: number;
++  statusMessage?: string;
+ }
+ declare class FetchError<T = any> extends Error implements IFetchError<T> {
+-    constructor(message: string, opts?: {
+-        cause: unknown;
+-    });
++  constructor(message: string, opts?: {
++    cause: unknown;
++  });
+ }
+ interface FetchError<T = any> extends IFetchError<T> {
+ }
+diff --git a/dist/shared/ofetch.441891d5.d.ts b/dist/shared/ofetch.441891d5.d.ts
+index 682187175f114a1e44f10c721607610fd48d8356..e36b77ebb77a27c831f8fc8c902aee502bf58baa 100644
+--- a/dist/shared/ofetch.441891d5.d.ts
++++ b/dist/shared/ofetch.441891d5.d.ts
+@@ -4,87 +4,87 @@ type RequestInit = globalThis.RequestInit;
+ type Response = globalThis.Response;
+ 
+ interface ResponseMap {
+-    blob: Blob;
+-    text: string;
+-    arrayBuffer: ArrayBuffer;
+-    stream: ReadableStream<Uint8Array>;
++  blob: Blob;
++  text: string;
++  arrayBuffer: ArrayBuffer;
++  stream: ReadableStream<Uint8Array>;
+ }
+ type ResponseType = keyof ResponseMap | "json";
+ type MappedType<R extends ResponseType, JsonType = any> = R extends keyof ResponseMap ? ResponseMap[R] : JsonType;
+ 
+ interface CreateFetchOptions {
+-    defaults?: FetchOptions;
+-    fetch?: Fetch;
+-    Headers?: typeof Headers;
+-    AbortController?: typeof AbortController;
++  defaults?: FetchOptions;
++  fetch?: Fetch;
++  Headers?: typeof Headers;
++  AbortController?: typeof AbortController;
+ }
+ type FetchRequest = RequestInfo;
+ interface FetchResponse<T> extends Response {
+-    _data?: T;
++  _data?: T;
+ }
+ interface SearchParameters {
+-    [key: string]: any;
++  [key: string]: any;
+ }
+ interface FetchContext<T = any, R extends ResponseType = ResponseType> {
+-    request: FetchRequest;
+-    options: FetchOptions<R>;
+-    response?: FetchResponse<T>;
+-    error?: Error;
++  request: FetchRequest;
++  options: FetchOptions<R>;
++  response?: FetchResponse<T>;
++  error?: Error;
+ }
+ interface FetchOptions<R extends ResponseType = ResponseType> extends Omit<RequestInit, "body"> {
+-    baseURL?: string;
+-    body?: RequestInit["body"] | Record<string, any>;
+-    ignoreResponseError?: boolean;
+-    params?: SearchParameters;
+-    query?: SearchParameters;
+-    parseResponse?: (responseText: string) => any;
+-    responseType?: R;
+-    /**
+-     * @experimental Set to "half" to enable duplex streaming.
+-     * Will be automatically set to "half" when using a ReadableStream as body.
+-     * https://fetch.spec.whatwg.org/#enumdef-requestduplex
+-     */
+-    duplex?: "half" | undefined;
+-    /** timeout in milliseconds */
+-    timeout?: number;
+-    retry?: number | false;
+-    /** Delay between retries in milliseconds. */
+-    retryDelay?: number;
+-    /** Default is [408, 409, 425, 429, 500, 502, 503, 504] */
+-    retryStatusCodes?: number[];
+-    onRequest?(context: FetchContext): Promise<void> | void;
+-    onRequestError?(context: FetchContext & {
+-        error: Error;
+-    }): Promise<void> | void;
+-    onResponse?(context: FetchContext & {
+-        response: FetchResponse<R>;
+-    }): Promise<void> | void;
+-    onResponseError?(context: FetchContext & {
+-        response: FetchResponse<R>;
+-    }): Promise<void> | void;
++  baseURL?: string;
++  body?: RequestInit["body"] | Record<string, any>;
++  ignoreResponseError?: boolean;
++  params?: SearchParameters;
++  query?: SearchParameters;
++  parseResponse?: (responseText: string) => any;
++  responseType?: R;
++  /**
++   * @experimental Set to "half" to enable duplex streaming.
++   * Will be automatically set to "half" when using a ReadableStream as body.
++   * https://fetch.spec.whatwg.org/#enumdef-requestduplex
++   */
++  duplex?: "half" | undefined;
++  /** timeout in milliseconds */
++  timeout?: number;
++  retry?: number | false;
++  /** Delay between retries in milliseconds. */
++  retryDelay?: number | (({ attempt: number, response: Response }) => number);
++  /** Default is [408, 409, 425, 429, 500, 502, 503, 504] */
++  retryStatusCodes?: number[];
++  onRequest?(context: FetchContext): Promise<void> | void;
++  onRequestError?(context: FetchContext & {
++    error: Error;
++  }): Promise<void> | void;
++  onResponse?(context: FetchContext & {
++    response: FetchResponse<R>;
++  }): Promise<void> | void;
++  onResponseError?(context: FetchContext & {
++    response: FetchResponse<R>;
++  }): Promise<void> | void;
+ }
+ interface $Fetch {
+-    <T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<MappedType<R, T>>;
+-    raw<T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<FetchResponse<MappedType<R, T>>>;
+-    native: Fetch;
+-    create(defaults: FetchOptions): $Fetch;
++  <T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<MappedType<R, T>>;
++  raw<T = any, R extends ResponseType = "json">(request: FetchRequest, options?: FetchOptions<R>): Promise<FetchResponse<MappedType<R, T>>>;
++  native: Fetch;
++  create(defaults: FetchOptions): $Fetch;
+ }
+ declare function createFetch(globalOptions?: CreateFetchOptions): $Fetch;
+ 
+ interface IFetchError<T = any> extends Error {
+-    request?: FetchRequest;
+-    options?: FetchOptions;
+-    response?: FetchResponse<T>;
+-    data?: T;
+-    status?: number;
+-    statusText?: string;
+-    statusCode?: number;
+-    statusMessage?: string;
++  request?: FetchRequest;
++  options?: FetchOptions;
++  response?: FetchResponse<T>;
++  data?: T;
++  status?: number;
++  statusText?: string;
++  statusCode?: number;
++  statusMessage?: string;
+ }
+ declare class FetchError<T = any> extends Error implements IFetchError<T> {
+-    constructor(message: string, opts?: {
+-        cause: unknown;
+-    });
++  constructor(message: string, opts?: {
++    cause: unknown;
++  });
+ }
+ interface FetchError<T = any> extends IFetchError<T> {
+ }
